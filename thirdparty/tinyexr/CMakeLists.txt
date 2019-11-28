@@ -1,0 +1,1 @@
+add_library(tinyexr repo/tinyexr.cc repo/tinyexr.h)

@@ -7,12 +7,12 @@
 [submodule "thirdparty/stb/repo"]
 	path = thirdparty/stb/repo
 	url = https://github.com/nothings/stb.git
-[submodule "thirdparty/assimp"]
-	path = thirdparty/assimp
-	url = https://github.com/assimp/assimp.git
-[submodule "thirdparty/glsl-optimizer"]
-	path = thirdparty/glsl-optimizer
-	url = https://github.com/aras-p/glsl-optimizer.git
 [submodule "thirdparty/tinyexr/repo"]
 	path = thirdparty/tinyexr/repo
 	url = https://github.com/syoyo/tinyexr.git
+[submodule ".\\thirdparty\\tinyobjloader\\repo"]
+	path = .\\thirdparty\\tinyobjloader\\repo
+	url = https://github.com/syoyo/tinyobjloader.git
+[submodule "thirdparty/glsl-optimizer"]
+	path = thirdparty/glsl-optimizer
+	url = https://github.com/aras-p/glsl-optimizer.git

@@ -1,0 +1,1 @@
+add_library(tinyobjloader repo/tiny_obj_loader.cc repo/tiny_obj_loader.h)
