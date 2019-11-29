@@ -4,7 +4,8 @@ in vec3 Position;
 in vec3 Normal;
 in vec3 Albedo;
 
-out vec4 FragColor;
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 FragPosition;
 
 uniform vec3 light_position;
 uniform vec3 light_emission;
@@ -25,5 +26,6 @@ void main() {
         Lo = Albedo * light_emission * attenuation * M_1_PIf * cos_theta;
     }
 
-    FragColor = vec4(Lo, 1.0);
+    FragColor = vec4(Lo, 1.0f);
+    FragPosition = vec4(Position, 1.0f);
 }

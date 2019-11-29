@@ -42,11 +42,10 @@ DynamicKeyframeGeometry DynamicKeyframeGeometry::load(const std::vector<std::str
         optix::float4 *normal_buffer = nullptr;
         auto position_buffer_size = sizeof(glm::vec4) * dynamic_vertex_count;
         auto normal_buffer_size = sizeof(glm::vec4) * dynamic_vertex_count;
-        cudaMalloc(reinterpret_cast<void **>(&position_buffer), position_buffer_size);
-        cudaMalloc(reinterpret_cast<void **>(&normal_buffer), normal_buffer_size);
-        
-        cudaMemcpy(position_buffer, flattened_positions.data(), position_buffer_size, cudaMemcpyHostToDevice);
-        cudaMemcpy(normal_buffer, flattened_normals.data(), normal_buffer_size, cudaMemcpyHostToDevice);
+        CHECK_CUDA(cudaMalloc(reinterpret_cast<void **>(&position_buffer), position_buffer_size));
+        CHECK_CUDA(cudaMalloc(reinterpret_cast<void **>(&normal_buffer), normal_buffer_size));
+        CHECK_CUDA(cudaMemcpy(position_buffer, flattened_positions.data(), position_buffer_size, cudaMemcpyHostToDevice));
+        CHECK_CUDA(cudaMemcpy(normal_buffer, flattened_normals.data(), normal_buffer_size, cudaMemcpyHostToDevice));
         
         position_buffers.emplace_back(position_buffer);
         normal_buffers.emplace_back(normal_buffer);
@@ -62,8 +61,8 @@ DynamicKeyframeGeometry DynamicKeyframeGeometry::load(const std::vector<std::str
 }
 
 void DynamicKeyframeGeometry::bind_vbo(uint32_t position_vbo, uint32_t normal_vbo, uint32_t color_vbo, size_t offset) {
-    cudaGraphicsGLRegisterBuffer(&_position_resource, position_vbo, cudaGraphicsRegisterFlagsNone);
-    cudaGraphicsGLRegisterBuffer(&_normal_resource, normal_vbo, cudaGraphicsRegisterFlagsNone);
+    CHECK_CUDA(cudaGraphicsGLRegisterBuffer(&_position_resource, position_vbo, cudaGraphicsRegisterFlagsNone));
+    CHECK_CUDA(cudaGraphicsGLRegisterBuffer(&_normal_resource, normal_vbo, cudaGraphicsRegisterFlagsNone));
     _resource_offset = offset;
     glNamedBufferSubData(color_vbo, offset * sizeof(glm::vec4), _vertex_count * sizeof(glm::vec4), _colors.data());
 }

@@ -12,6 +12,8 @@
 #include "StaticGeometry.h"
 #include "Shader.h"
 #include "ShadowRay.h"
+#include "Framebuffer.h"
+#include "ShadowTracer.h"
 
 int main() {
     
@@ -21,8 +23,10 @@ int main() {
         exit(-1);
     }
     
-    constexpr auto WINDOW_WIDTH = 800;
-    constexpr auto WINDOW_HEIGHT = 600;
+    constexpr auto WINDOW_WIDTH = 800ul;
+    constexpr auto WINDOW_HEIGHT = 600ul;
+    constexpr auto RENDER_WIDTH = WINDOW_WIDTH * 2ul;
+    constexpr auto RENDER_HEIGHT = WINDOW_HEIGHT * 2ul;
     
     // create window
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -39,8 +43,12 @@ int main() {
         exit(-1);
     }
     
+    // Framebuffer
+    Framebuffer framebuffer{RENDER_WIDTH, RENDER_HEIGHT};
+    
     // load shaders
     Shader shader{"resources/shaders/diffuse.vert", "resources/shaders/diffuse.frag"};
+    Shader display_shader{"resources/shaders/display.vert", "resources/shaders/display.frag"};
     
     // create geometry
     std::vector<std::string> elephant_file_names;
@@ -81,7 +89,6 @@ int main() {
     };
     
     auto wall_geometry = StaticGeometry::load(wall_paths, wall_transforms, wall_colors);
-    
     auto total_vertex_count = elephant_geometry.vertex_count() + wall_geometry.vertex_count();
     
     auto vao = 0u;
@@ -118,25 +125,38 @@ int main() {
     
     glm::vec3 eye{0.0f, 0.0f, 28.0f};
     auto view_matrix = glm::lookAt(eye, glm::vec3{0.0f}, glm::vec3{0.0f, 1.0f, 0.0f});
-    auto projection_matrix = glm::perspective(glm::radians(45.0f), static_cast<float>(WINDOW_WIDTH) / static_cast<float>(WINDOW_HEIGHT), 0.1f, 100.0f);
+    auto projection_matrix = glm::perspective(glm::radians(45.0f), static_cast<float>(RENDER_WIDTH) / static_cast<float>(RENDER_HEIGHT), 0.1f, 100.0f);
+    
+    // display
+    float display_vertices[] {
+        -1.0f, -1.0f,
+        1.0f, -1.0f,
+        1.0f, 1.0f,
+        -1.0f, -1.0f,
+        1.0f, 1.0f,
+        -1.0f, 1.0f
+    };
+    
+    auto display_vbo = 0u;
+    auto display_vao = 0u;
+    glGenBuffers(1, &display_vbo);
+    glGenVertexArrays(1, &display_vao);
+    
+    glBindVertexArray(display_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, display_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(display_vertices), display_vertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), nullptr);
     
     // initialize ray tracer
-    auto context = optix::prime::Context::create(RTP_CONTEXT_TYPE_CUDA);
-    auto model = context->createModel();
-    elephant_geometry.with_position_pointer([&](optix::float4 *p) {
-        model->setTriangles(1, RTP_BUFFER_TYPE_CUDA_LINEAR, p, sizeof(float4));
+    ShadowTracer tracer{RENDER_WIDTH, RENDER_HEIGHT};
+    elephant_geometry.with_position_pointer([&] (optix::float4 *p) {
+        tracer.bind_geometry(p, total_vertex_count);
     });
     
-    float *hit_buffer = nullptr;
-    ShadowRay *ray_buffer = nullptr;
-    cudaMalloc(reinterpret_cast<void **>(&hit_buffer), WINDOW_WIDTH * WINDOW_HEIGHT * sizeof(float));
-    cudaMalloc(reinterpret_cast<void **>(&ray_buffer), WINDOW_WIDTH * WINDOW_HEIGHT * sizeof(ShadowRay));
-    
-    auto query = model->createQuery(RTP_QUERY_TYPE_ANY);
-    query->setRays(1, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR, ray_buffer);
-    query->setHits(1, RTP_BUFFER_FORMAT_HIT_T, RTP_BUFFER_TYPE_CUDA_LINEAR, hit_buffer);
-    
     auto initial_time = glfwGetTime();
+    auto last_time = 0.0f;
+    auto frame_count = 0u;
     
     // main loop
     while (!glfwWindowShouldClose(window)) {
@@ -144,27 +164,56 @@ int main() {
         glfwPollEvents();
         
         auto time = static_cast<float>(glfwGetTime() - initial_time);
-        elephant_geometry.update(time);
-        model->update(RTP_MODEL_HINT_ASYNC);
         
+        frame_count++;
+        if (time - last_time > 1.0f) {
+            std::cout << "FPS: " << frame_count / (time - last_time) << std::endl;
+            last_time = time;
+            frame_count = 0;
+        }
+        
+        // 0. update geometry
+        elephant_geometry.update(time);
+        tracer.update();
+        
+        // 1. draw in framebuffer
+        framebuffer.with([&] {
+            glEnable(GL_DEPTH_TEST);
+            glViewport(0, 0, RENDER_WIDTH, RENDER_HEIGHT);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(static_cast<uint32_t>(GL_COLOR_BUFFER_BIT) | static_cast<uint32_t>(GL_DEPTH_BUFFER_BIT));
+    
+            shader.use();
+            shader.setMat4("view", view_matrix);
+            shader.setMat4("projection", projection_matrix);
+            shader.setVec3("light_position", light_position);
+            shader.setVec3("light_emission", light_emission);
+    
+            glBindVertexArray(vao);
+            glDrawArrays(GL_TRIANGLES, 0, total_vertex_count);
+        });
+        
+        // 2. ray trace shadows
+        framebuffer.with_position_pointer([&](const optix::float4 *p) {
+            tracer.execute(p, light_position);
+        });
+        
+        // 3. display
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
+        glDisable(GL_DEPTH_TEST);
         glViewport(0, 0, width, height);
-        glEnable(GL_DEPTH_TEST);
-        
         glClearColor(1.0f, 0.5f, 0.25f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
-        shader.use();
-        shader.setMat4("view", view_matrix);
-        shader.setMat4("projection", projection_matrix);
-        shader.setVec3("light_position", light_position);
-        shader.setVec3("light_emission", light_emission);
-        
-        glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, total_vertex_count);
-        
-        query->execute(RTP_QUERY_HINT_ASYNC);
+        glClear(static_cast<uint32_t>(GL_COLOR_BUFFER_BIT));
+        display_shader.use();
+        display_shader.setInt("screen", 0);
+        display_shader.setInt("shadow", 1);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, framebuffer.beauty_texture());
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, tracer.shadow_texture());
+        glBindVertexArray(display_vao);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
         
         glfwSwapBuffers(window);
     }

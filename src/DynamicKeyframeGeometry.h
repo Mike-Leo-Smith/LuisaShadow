@@ -14,6 +14,7 @@
 #include <cuda_gl_interop.h>
 
 #include "DynamicKeyframeGeometryHelper.h"
+#include "check_cuda.h"
 
 class DynamicKeyframeGeometry {
 
@@ -38,19 +39,19 @@ public:
     void with_position_pointer(F &&func) {
         auto buffer_size = _vertex_count * sizeof(optix::float4);
         optix::float4 *position_ptr = nullptr;
-        cudaGraphicsMapResources(1, &_position_resource);
-        cudaGraphicsResourceGetMappedPointer(reinterpret_cast<void **>(&position_ptr), &buffer_size, _position_resource);
+        CHECK_CUDA(cudaGraphicsMapResources(1, &_position_resource));
+        CHECK_CUDA(cudaGraphicsResourceGetMappedPointer(reinterpret_cast<void **>(&position_ptr), &buffer_size, _position_resource));
         func(position_ptr + _resource_offset);
-        cudaGraphicsUnmapResources(1, &_position_resource);
+        CHECK_CUDA(cudaGraphicsUnmapResources(1, &_position_resource));
     }
     
     template<typename F>
     void with_normal_pointer(F &&func) {
         auto buffer_size = _vertex_count * sizeof(optix::float4);
         optix::float4 *normal_ptr = nullptr;
-        cudaGraphicsMapResources(1, &_normal_resource);
-        cudaGraphicsResourceGetMappedPointer(reinterpret_cast<void **>(&normal_ptr), &buffer_size, _normal_resource);
+        CHECK_CUDA(cudaGraphicsMapResources(1, &_normal_resource));
+        CHECK_CUDA(cudaGraphicsResourceGetMappedPointer(reinterpret_cast<void **>(&normal_ptr), &buffer_size, _normal_resource));
         func(normal_ptr + _resource_offset);
-        cudaGraphicsUnmapResources(1, &_normal_resource);
+        CHECK_CUDA(cudaGraphicsUnmapResources(1, &_normal_resource));
     }
 };
