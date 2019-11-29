@@ -9,9 +9,9 @@
 #define CHECK_CUDA(call)                                                       \
     [&] {                                                                      \
         cudaError_t error = call;                                              \
-        if( error != cudaSuccess )                                             \
+        if(error != cudaSuccess)                                               \
         {                                                                      \
-            std::cerr << "CUDA call (" << #call << " ) failed with error: '"   \
+            std::cerr << "CUDA call [ " << #call << " ] failed with error: '"  \
                << cudaGetErrorString(error)                                    \
                << "' (" __FILE__ << ":" << __LINE__ << ")\n";                  \
             exit(-1);                                                          \

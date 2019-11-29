@@ -31,16 +31,19 @@ ShadowTracer::ShadowTracer(size_t width, size_t height)
 
 void ShadowTracer::execute(const optix::float4 *position_buffer, glm::vec3 light_position) {
     
-    shadow_tracer_generate_rays(_ray_buffer, position_buffer, _width * _height,
-                                optix::make_float3(light_position.x, light_position.y, light_position.z));
-    _query->execute(RTP_QUERY_HINT_ASYNC);
+    for (auto i = 0; i < 64; i++) {  // TODO: support sampling area lights
     
-    cudaArray_t shadow_array;
-    CHECK_CUDA(cudaGraphicsMapResources(1, &_shadow_resource));
-    CHECK_CUDA(cudaGraphicsSubResourceGetMappedArray(&shadow_array, _shadow_resource, 0, 0));
-    CHECK_CUDA(cudaMemcpyToArrayAsync(shadow_array, 0, 0, _hit_buffer, _width * _height * sizeof(float),
-                                      cudaMemcpyDeviceToDevice));
-    CHECK_CUDA(cudaGraphicsUnmapResources(1, &_shadow_resource));
+        shadow_tracer_generate_rays(_ray_buffer, position_buffer, _width * _height,
+                                    optix::make_float3(light_position.x, light_position.y, light_position.z));
+        _query->execute(RTP_QUERY_HINT_ASYNC);
+    
+        cudaArray_t shadow_array;
+        CHECK_CUDA(cudaGraphicsMapResources(1, &_shadow_resource));
+        CHECK_CUDA(cudaGraphicsSubResourceGetMappedArray(&shadow_array, _shadow_resource, 0, 0));
+        CHECK_CUDA(cudaMemcpyToArrayAsync(shadow_array, 0, 0, _hit_buffer, _width * _height * sizeof(float),
+                                          cudaMemcpyDeviceToDevice));
+        CHECK_CUDA(cudaGraphicsUnmapResources(1, &_shadow_resource));
+    }
 }
 
 void ShadowTracer::update() {

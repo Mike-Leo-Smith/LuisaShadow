@@ -23,10 +23,10 @@ int main() {
         exit(-1);
     }
     
-    constexpr auto WINDOW_WIDTH = 800ul;
-    constexpr auto WINDOW_HEIGHT = 600ul;
-    constexpr auto RENDER_WIDTH = WINDOW_WIDTH * 2ul;
-    constexpr auto RENDER_HEIGHT = WINDOW_HEIGHT * 2ul;
+    constexpr auto WINDOW_WIDTH = 512ul;
+    constexpr auto WINDOW_HEIGHT = 384ul;
+    constexpr auto RENDER_WIDTH = WINDOW_WIDTH;
+    constexpr auto RENDER_HEIGHT = WINDOW_HEIGHT;
     
     // create window
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -51,9 +51,9 @@ int main() {
     Shader display_shader{"resources/shaders/display.vert", "resources/shaders/display.frag"};
     
     // create geometry
-    std::vector<std::string> elephant_file_names;
+    std::vector<std::string> elephant_paths;
     for (auto i = 1; i <= 48; i++) {
-        elephant_file_names.emplace_back(serialize("resources/elephant/elephant-gallop-", (i < 10 ? "0" : ""), i, ".obj"));
+        elephant_paths.emplace_back(serialize("resources/elephant/elephant-gallop-", (i < 10 ? "0" : ""), i, ".obj"));
     }
     
     auto elephant_translation = glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, -9.9f, 0.0f});
@@ -62,7 +62,7 @@ int main() {
     auto elephant_transform = elephant_translation * elephant_rotation * elephant_scaling;
     
     glm::vec3 elephant_color{1.0f};
-    auto elephant_geometry = DynamicKeyframeGeometry::load(elephant_file_names, elephant_transform, elephant_color);
+    auto elephant_geometry = DynamicKeyframeGeometry::load(elephant_paths, elephant_transform, elephant_color);
     
     std::vector<std::string> wall_paths{
         "resources/cube/cube.obj",

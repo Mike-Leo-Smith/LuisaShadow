@@ -40,8 +40,6 @@ void dynamic_keyframe_geometry_update_positions(
     auto block_count = (size + block_width - 1) / block_width * block_width;
     
     do_update_positions<<<block_count, block_width>>>(position_vbo, size, prev_positions, next_positions, t);
-    
-    
 }
 
 void dynamic_keyframe_geometry_update_normals(
@@ -52,5 +50,4 @@ void dynamic_keyframe_geometry_update_normals(
     auto block_count = (size + block_width - 1) / block_width * block_width;
     
     do_update_normals<<<block_count, block_width>>>(normal_vbo, size, prev_normals, next_normals, t);
-    
 }
