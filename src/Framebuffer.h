@@ -40,7 +40,7 @@ public:
         CHECK_CUDA(cudaGraphicsSubResourceGetMappedArray(&array, _position_resource, 0, 0));
         CHECK_CUDA(cudaMemcpyFromArrayAsync(_position_buffer, array, 0, 0, _width * _height * sizeof(optix::float4), cudaMemcpyDeviceToDevice));
         CHECK_CUDA(cudaGraphicsUnmapResources(1, &_position_resource));
-        func(_position_buffer);
+        func(const_cast<optix::float4 *>(_position_buffer));
     }
     
     [[nodiscard]] uint32_t beauty_texture() const noexcept { return _beauty_texture; }
