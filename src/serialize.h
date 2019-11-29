@@ -2,8 +2,7 @@
 // Created by mike on 19-5-13.
 //
 
-#ifndef LEARNOPENGL_SERIALIZE_H
-#define LEARNOPENGL_SERIALIZE_H
+#pragma once
 
 #include <sstream>
 #include <string>
@@ -15,5 +14,3 @@ std::string serialize(Args &&...args) {
     (ss << ... << std::forward<Args>(args));
     return ss.str();
 }
-
-#endif //LEARNOPENGL_SERIALIZE_H
