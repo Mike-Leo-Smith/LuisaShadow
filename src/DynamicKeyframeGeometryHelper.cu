@@ -7,6 +7,8 @@
 #include <cstdio>
 #include "DynamicKeyframeGeometryHelper.h"
 
+constexpr auto block_width = 128ul;
+
 __device__ float3 normal_slerp(float3 n1, float3 n2, float t) {
     if (dot(n1, n2) > 0.995f) { return normalize(lerp(n1, n2, t)); }
     auto theta = acosf(dot(n1, n2));
@@ -15,7 +17,7 @@ __device__ float3 normal_slerp(float3 n1, float3 n2, float t) {
 }
 
 __global__ void do_update_positions(optix::float4 *buffer, size_t size, const optix::float4 *prev, const optix::float4 *next, float t) {
-    auto index = blockDim.x * blockIdx.x + threadIdx.x;
+    auto index = block_width * blockIdx.x + threadIdx.x;
     if (index < size) {
         auto p0 = prev[index];
         auto p1 = next[index];
@@ -24,7 +26,7 @@ __global__ void do_update_positions(optix::float4 *buffer, size_t size, const op
 }
 
 __global__ void do_update_normals(optix::float4 *buffer, size_t size, const optix::float4 *prev, const optix::float4 *next, float t) {
-    auto index = blockDim.x * blockIdx.x + threadIdx.x;
+    auto index = block_width * blockIdx.x + threadIdx.x;
     if (index < size) {
         auto n0 = prev[index];
         auto n1 = next[index];
@@ -36,8 +38,7 @@ void dynamic_keyframe_geometry_update_positions(
         optix::float4 *position_vbo, size_t size,
         optix::float4 *prev_positions, optix::float4 *next_positions, float t) {
     
-    constexpr auto block_width = 128ul;
-    auto block_count = (size + block_width - 1) / block_width * block_width;
+    auto block_count = (size + block_width - 1) / block_width;
     
     do_update_positions<<<block_count, block_width>>>(position_vbo, size, prev_positions, next_positions, t);
 }
@@ -46,8 +47,7 @@ void dynamic_keyframe_geometry_update_normals(
         optix::float4 *normal_vbo, size_t size, optix::float4 *prev_normals,
         optix::float4 *next_normals, float t) {
     
-    constexpr auto block_width = 128ul;
-    auto block_count = (size + block_width - 1) / block_width * block_width;
+    auto block_count = (size + block_width - 1) / block_width;
     
     do_update_normals<<<block_count, block_width>>>(normal_vbo, size, prev_normals, next_normals, t);
 }

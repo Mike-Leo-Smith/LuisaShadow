@@ -207,9 +207,9 @@ int main() {
         glClear(static_cast<uint32_t>(GL_COLOR_BUFFER_BIT));
         display_shader.use();
         display_shader.setInt("screen", 0);
-        display_shader.setInt("shadow", 1);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, framebuffer.beauty_texture());
+        display_shader.setInt("shadow", 1);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, tracer.shadow_texture());
         glBindVertexArray(display_vao);

@@ -2,6 +2,8 @@
 // Created by Mike on 11/29/2019.
 //
 
+#include <random>
+
 #include "ShadowTracer.h"
 #include "ShadowTracerHelper.h"
 
@@ -11,13 +13,23 @@ ShadowTracer::ShadowTracer(size_t width, size_t height)
     _context = optix::prime::Context::create(RTP_CONTEXT_TYPE_CUDA);
     _model = _context->createModel();
     
-    CHECK_CUDA(cudaMalloc(reinterpret_cast<void **>(&_hit_buffer), width * height * sizeof(float)));
-    CHECK_CUDA(cudaMalloc(reinterpret_cast<void **>(&_ray_buffer), width * height * sizeof(ShadowRay)));
+    size_t size = width * height;
+    CHECK_CUDA(cudaMalloc(reinterpret_cast<void **>(&_seed_buffer), size * sizeof(uint32_t)));
+    CHECK_CUDA(cudaMalloc(reinterpret_cast<void **>(&_hit_buffer), size * sizeof(float)));
+    CHECK_CUDA(cudaMalloc(reinterpret_cast<void **>(&_hit_accum_buffer), size * sizeof(float)));
+    CHECK_CUDA(cudaMalloc(reinterpret_cast<void **>(&_ray_buffer), size * sizeof(ShadowRay)));
+    
+    std::vector<uint32_t> random_seeds(size);
+    std::default_random_engine random_engine{std::random_device{}()};
+    for (auto &&seed : random_seeds) {
+        seed = random_engine() << 8u;
+    }
+    CHECK_CUDA(cudaMemcpy(_seed_buffer, random_seeds.data(), size, cudaMemcpyHostToDevice));
     
     _query = _model->createQuery(RTP_QUERY_TYPE_ANY);
-    _query->setRays(width * height, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR,
+    _query->setRays(size, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR,
                     _ray_buffer);
-    _query->setHits(width * height, RTP_BUFFER_FORMAT_HIT_T, RTP_BUFFER_TYPE_CUDA_LINEAR, _hit_buffer);
+    _query->setHits(size, RTP_BUFFER_FORMAT_HIT_T, RTP_BUFFER_TYPE_CUDA_LINEAR, _hit_buffer);
     
     glGenTextures(1, &_shadow_texture);
     glBindTexture(GL_TEXTURE_2D, _shadow_texture);
@@ -31,19 +43,20 @@ ShadowTracer::ShadowTracer(size_t width, size_t height)
 
 void ShadowTracer::execute(const optix::float4 *position_buffer, glm::vec3 light_position) {
     
-    for (auto i = 0; i < 64; i++) {  // TODO: support sampling area lights
-    
-        shadow_tracer_generate_rays(_ray_buffer, position_buffer, _width * _height,
+    size_t size = _width * _height;
+    for (auto i = 0; i < 128; i++) {  // TODO: support sampling area lights
+        shadow_tracer_generate_rays(_ray_buffer, position_buffer, _seed_buffer, size,
                                     optix::make_float3(light_position.x, light_position.y, light_position.z));
         _query->execute(RTP_QUERY_HINT_ASYNC);
-    
-        cudaArray_t shadow_array;
-        CHECK_CUDA(cudaGraphicsMapResources(1, &_shadow_resource));
-        CHECK_CUDA(cudaGraphicsSubResourceGetMappedArray(&shadow_array, _shadow_resource, 0, 0));
-        CHECK_CUDA(cudaMemcpyToArrayAsync(shadow_array, 0, 0, _hit_buffer, _width * _height * sizeof(float),
-                                          cudaMemcpyDeviceToDevice));
-        CHECK_CUDA(cudaGraphicsUnmapResources(1, &_shadow_resource));
+        shadow_tracer_accumulate_shadow(_hit_accum_buffer, _hit_buffer, i + 1, size);
     }
+    
+    cudaArray_t shadow_array;
+    CHECK_CUDA(cudaGraphicsMapResources(1, &_shadow_resource));
+    CHECK_CUDA(cudaGraphicsSubResourceGetMappedArray(&shadow_array, _shadow_resource, 0, 0));
+    CHECK_CUDA(cudaMemcpyToArrayAsync(shadow_array, 0, 0, _hit_accum_buffer, size * sizeof(float),
+                                      cudaMemcpyDeviceToDevice));
+    CHECK_CUDA(cudaGraphicsUnmapResources(1, &_shadow_resource));
 }
 
 void ShadowTracer::update() {

@@ -19,7 +19,9 @@ private:
     uint32_t _height{0};
     uint32_t _fbo{0};
     uint32_t _beauty_texture{0};
+    uint32_t _albedo_texture{0};
     uint32_t _position_texture{0};
+    uint32_t _normal_texture{0};
     cudaGraphicsResource_t _position_resource{nullptr};
     optix::float4 *_position_buffer{nullptr};
 

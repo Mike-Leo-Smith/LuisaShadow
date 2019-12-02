@@ -8,5 +8,5 @@ uniform sampler2D shadow;
 
 void main() {
     float Shadow = texture(shadow, TexCoords).r;
-    FragColor = vec4(float(Shadow < 0.0f) * texture(screen, TexCoords).rgb, 1.0f);
+    FragColor = vec4((1.0f - Shadow) * texture(screen, TexCoords).rgb, 1.0f);
 }

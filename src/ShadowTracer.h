@@ -23,6 +23,8 @@ private:
     optix::prime::Model _model;
     optix::prime::Query _query;
     float *_hit_buffer{nullptr};
+    float *_hit_accum_buffer{nullptr};
+    uint32_t *_seed_buffer{nullptr};
     ShadowRay *_ray_buffer{nullptr};
     cudaGraphicsResource_t _shadow_resource{nullptr};
     uint32_t _shadow_texture{0u};
