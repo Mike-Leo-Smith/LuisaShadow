@@ -9,7 +9,7 @@
 constexpr auto block_width = 128ul;
 
 template<uint32_t base>
-__device__ inline float halton(uint32_t offset) {
+__device__ constexpr float halton(uint32_t offset) {
     auto f = 1.0f;
     auto inv_b = 1.0f / base;
     auto r = 0.0f;
@@ -20,10 +20,10 @@ __device__ inline float halton(uint32_t offset) {
     return optix::clamp(r, 0.0f, 1.0f);
 }
 
-__device__ optix::float2 uniform_sample_disk(optix::float2 u) {
+__device__ inline optix::float2 uniform_sample_disk(optix::float2 u) {
     auto r = sqrtf(u.x);
     auto theta = M_PIf * 2.0f * u.y;
-    return r * optix::make_float2(cosf(theta), sinf(theta));
+    return {r * cosf(theta), r * sinf(theta)};
 }
 
 __global__ void do_generate_rays(

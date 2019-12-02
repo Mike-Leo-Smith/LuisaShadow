@@ -6,8 +6,6 @@
 #include <glm/ext.hpp>
 #include <tiny_obj_loader.h>
 
-#include <optix_prime/optix_primepp.h>
-
 #include "DynamicKeyframeGeometry.h"
 #include "StaticGeometry.h"
 #include "Shader.h"
