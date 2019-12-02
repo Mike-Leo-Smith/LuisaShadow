@@ -21,9 +21,7 @@ ShadowTracer::ShadowTracer(size_t width, size_t height)
     
     std::vector<uint32_t> random_seeds(size);
     std::default_random_engine random_engine{std::random_device{}()};
-    for (auto &&seed : random_seeds) {
-        seed = random_engine() << 8u;
-    }
+    for (auto &&seed : random_seeds) { seed = random_engine(); }
     CHECK_CUDA(cudaMemcpy(_seed_buffer, random_seeds.data(), size, cudaMemcpyHostToDevice));
     
     _query = _model->createQuery(RTP_QUERY_TYPE_ANY);
